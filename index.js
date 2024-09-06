@@ -1,29 +1,96 @@
 const express = require('express');
+const multer = reqiure('multer');
+const archiver = reqiure('archiver');
+const fs = reqiure('fs');
+const path = reqiure('path');
+const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = 8005;
 
-app.use(express.json())
+app.use(express.json());
+
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const ZIPS_PATH = path.join(_dirname, 'zips');
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadId = req.uploadId;
+        const uploadPath = path.join(UPLOADS_DIR, uploadId);
+
+        if (!fs.existSync(uploadPath)) {
+            fs.mkdirSync(uploadPath);
+        }
+        cb(null, uploadPath)
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.orignalname);
+    }
+
+})
+
+const upload = multer({storage : storage});
+
+app.use('/upload', (req, res, next) => {
+    req.uploadId = uuidv4;
+    next();
+});
+app.post('/upload', upload.array('files', 20),(req, res) => {
+    if(!req.files || req.files.length === 0) {
+        return res.status(400).send({message: 'No file was uploaded'});
+    }
+
+    const uploadId = req.uploadId;
+
+    res.status(200).send({uploadId: uploadId });
+});
+app.get('/download/:id', async (req, res) => {
+    const uploadId = req.params.id;
+    const uploadPath = path.join(UPLOADS_DIR, uploadId);
+
+    if (!fs.existSync(uploadPath)) {
+        return res.status(400).send({message: 'No File with that ID does not exist'});
+    }
+
+    const zipFileName = `file_${uploadId}.zip`;
+    const zipFilePath = path.join(ZIPS_PATH, uploadID); 
+    const output = fs.createWriteStream(zipFilePath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => {
+        console.log(`Created zip: ${zipFileName} (${archive.pointer()} total bytes)`);
+
+        res.download(zipFilePath, zipFileName, (err) => {
+            if (err) {
+                console.error(err);
+                res.status(500).send('Error downloading the file.');
+            }
+
+            // Optionally, delete the zip file after download
+            // fs.unlink(zipFilePath, (err) => {
+            //     if (err) {
+            //         console.error('Error deleting zip file:', err);
+            //     } else {
+            //         console.log(`Deleted zip file: ${zipFileName}`);
+            //     }
+            // });
+        });
+    });
+
+    archive.on('error', (err) => {
+        console.error('Archiver error:', err);
+        res.status(500).send('Error creating zip file.');
+    });
+
+    archive.pipe(output);
+
+    archive.directory(uploadPath, false);
+
+    archive.finalize();
+})
+
 app.listen(
     PORT,
     () => console.log(`Live on http://localhost:${PORT}`)
-)
+);
 
-app.get('/tshirt', (req, res) => {
-    res.status(200).send({
-        tshirt: 'T-Shirt',
-        size: 'Large'
-    })
-});
 
-app.post('/tshirt/:id', (req, res) => {
-    const { id } = req.params;
-    const { logo } = req.body;
-
-    if (!logo) {
-        res.status(418).send({message: 'We need a logo'});
-    }
-
-    res.send({
-        tshirt: `Tshirt with the logo ${logo} and id ${id}`
-    })
-})
