@@ -12,3 +12,12 @@ Download Endpoint (`GET /download/:id`):
 Takes the uploadId as a URL parameter.
 Zips the corresponding files.
 Sends the zipped file as a downloadable response.
+
+```
+express-file-api/
+├── uploads/       # Directory to store uploaded files
+├── zips/          # Directory to store zipped files
+├── index.js       # Main server file
+├── package.json
+└── package-lock.json
+```
