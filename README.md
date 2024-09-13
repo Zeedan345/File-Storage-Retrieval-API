@@ -21,3 +21,7 @@ express-file-api/
 ├── package.json
 └── package-lock.json
 ```
+
+### Starting the Server:
+Start the server using Node JS:
+'node index.js'
