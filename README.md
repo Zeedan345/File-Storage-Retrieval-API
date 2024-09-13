@@ -23,5 +23,7 @@ express-file-api/
 ```
 
 ### Starting the Server:
-Start the server using Node JS:
-'node index.js'
+Start the server using Node JS.
+`node index.js`
+
+The code is setup to start at `Port : 8005`. It can be changed as reqiured.
